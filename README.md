@@ -1,12 +1,5 @@
 # Nager.AmazonProductAdvertising
-Allow access to amazon product advertising API (`paapi5`), you can search a product over the name or a keyword. You can visit a demo [here](https://shop.nager.at)
-
-
-### Installation
-The package is available on [nuget](https://www.nuget.org/packages/Nager.AmazonProductAdvertising)
-```
-PM> install-package Nager.AmazonProductAdvertising
-```
+Allow access to amazon product advertising API (`paapi5`), you can search a product over the name or a keyword.
 
 ### Usage
 
