@@ -3,6 +3,6 @@ namespace Nager.AmazonProductAdvertising.Model
 {
     public class GetBrowseNodesResponse : AmazonResponse
     {
-        public BrowseNodesResult BrowseNodesResult { get; set; }
+        public BrowseNodesResult BrowseNodesResult { get; set; } = default!;
     }
 }

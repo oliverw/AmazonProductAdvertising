@@ -1,10 +1,9 @@
 ﻿namespace Nager.AmazonProductAdvertising.Model.Paapi
 {
-    public class ItemDimensionUnit
+    public class EnergyEfficiencyClass
     {
-        public double DisplayValue { get; set; }
+        public string? DisplayValue { get; set; }
         public string? Label { get; set; }
         public string? Locale { get; set; }
-        public string? Unit { get; set; }
     }
 }

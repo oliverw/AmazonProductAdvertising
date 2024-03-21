@@ -9,5 +9,10 @@ namespace Nager.AmazonProductAdvertising.Model.Request
 
         [JsonConverter(typeof(StringEnumConverter))]
         public Condition? Condition { get; set; }
+        public GetItemsRequest(string[] itemIds, string partnerTag, string partnerType, string marketplace) : base(partnerTag, partnerType, marketplace)
+        {
+            ItemIds = itemIds;
+        }
+
     }
 }

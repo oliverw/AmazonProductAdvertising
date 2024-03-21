@@ -2,6 +2,6 @@
 {
     public class Condition2
     {
-        public string Value { get; set; }
+        public string? Value { get; set; }
     }
 }

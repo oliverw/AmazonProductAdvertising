@@ -4,6 +4,6 @@ namespace Nager.AmazonProductAdvertising.Model
 {
     public class GetVariationsResponse : AmazonResponse
     {
-        public VariationsResult VariationsResult { get; set; }
+        public VariationsResult VariationsResult { get; set; } = default!;
     }
 }

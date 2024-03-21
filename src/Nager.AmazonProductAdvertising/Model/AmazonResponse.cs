@@ -5,10 +5,10 @@ namespace Nager.AmazonProductAdvertising.Model
     public class AmazonResponse
     {
         [JsonProperty("__type")]
-        public string Type { get; set; }
+        public string Type { get; set; } = "";
         public bool Successful { get; set; }
-        public string ErrorMessage { get; set; }
-        public string Message { get; set; }
-        public AmazonResponseError[] Errors { get; set; }
+        public string ErrorMessage { get; set; } = "";
+        public string Message { get; set; } = "";
+        public AmazonResponseError[] Errors { get; set; } = default!;
     }
 }

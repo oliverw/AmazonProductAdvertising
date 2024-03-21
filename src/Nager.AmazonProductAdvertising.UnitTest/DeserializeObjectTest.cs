@@ -1,10 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nager.AmazonProductAdvertising.Model;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 namespace Nager.AmazonProductAdvertising.UnitTest
 {
@@ -12,7 +8,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
     public class DeserializeObjectTest
     {
         private JsonSerializerSettings _jsonSerializerSettingsResponse;
-
+        public TestContext TestContext { get; set; }
         [TestInitialize]
         public void TestInitialize()
         {
@@ -26,7 +22,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DeploymentItem(@"Responses\SearchResult1.json")]
         public void DeserializeObjectSearch1()
         {
-            var json = File.ReadAllText(@"Responses\SearchResult1.json");
+            var json = File.ReadAllText("SearchResult1.json");
             var response = JsonConvert.DeserializeObject<SearchItemResponse>(json, this._jsonSerializerSettingsResponse);
 
             Assert.IsNotNull(response.SearchResult);
@@ -36,7 +32,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DeploymentItem(@"Responses\SearchResult2.json")]
         public void DeserializeObjectSearch2()
         {
-            var json = File.ReadAllText(@"Responses\SearchResult2.json");
+            var json = File.ReadAllText(@"SearchResult2.json");
             var response = JsonConvert.DeserializeObject<SearchItemResponse>(json, this._jsonSerializerSettingsResponse);
 
             Assert.IsNotNull(response.SearchResult);
@@ -46,7 +42,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DeploymentItem(@"Responses\SearchResult3.json")]
         public void DeserializeObjectSearch3()
         {
-            var json = File.ReadAllText(@"Responses\SearchResult3.json");
+            var json = File.ReadAllText(@"SearchResult3.json");
             var response = JsonConvert.DeserializeObject<SearchItemResponse>(json, this._jsonSerializerSettingsResponse);
 
             Assert.IsNotNull(response.SearchResult);
@@ -56,7 +52,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DeploymentItem(@"Responses\SearchNoResults.json")]
         public void DeserializeObjectSearch4()
         {
-            var json = File.ReadAllText(@"Responses\SearchNoResults.json");
+            var json = File.ReadAllText(@"SearchNoResults.json");
             var response = JsonConvert.DeserializeObject<SearchItemResponse>(json, this._jsonSerializerSettingsResponse);
 
             Assert.IsNull(response.SearchResult);
@@ -67,7 +63,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DeploymentItem(@"Responses\TooManyRequestsException.json")]
         public void DeserializeTooManyRequests()
         {
-            var json = File.ReadAllText(@"Responses\TooManyRequestsException.json");
+            var json = File.ReadAllText(@"TooManyRequestsException.json");
             var response = JsonConvert.DeserializeObject<SearchItemResponse>(json, this._jsonSerializerSettingsResponse);
 
             Assert.IsNull(response.SearchResult);

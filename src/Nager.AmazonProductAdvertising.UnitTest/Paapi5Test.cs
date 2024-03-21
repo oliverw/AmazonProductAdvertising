@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nager.AmazonProductAdvertising.Auth;
 using Nager.AmazonProductAdvertising.Model;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Nager.AmazonProductAdvertising.UnitTest
 {
@@ -17,10 +16,9 @@ namespace Nager.AmazonProductAdvertising.UnitTest
             var accessKey = "";
             var secretKey = "";
             var parnterTag = "";
-            var endpoint = AmazonEndpoint.DE;
-
-            var amazonAuthentication = new AmazonAuthentication(accessKey, secretKey);
-            this._client = new AmazonProductAdvertisingClient(amazonAuthentication, endpoint, parnterTag, strictJsonMapping: true);
+            var endpoint = AmazonEndpoint.FR;
+            var signer = new AwsSigner();
+            _client = new AmazonProductAdvertisingClient(signer, accessKey, secretKey, endpoint, parnterTag, strictJsonMapping: true);
         }
 
         [DataTestMethod]
@@ -34,7 +32,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DataRow("Nussknacker")]
         public async Task SearchItemsTest1(string keyword)
         {
-            var response = await this._client.SearchItemsAsync(keyword);
+            var response = await _client.SearchItemsAsync(keyword);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -43,20 +41,18 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DataRow("Harry Potter")]
         public async Task SearchItemsWithSearchIndex(string keyword)
         {
-            var responseDefaultSearch = await this._client.SearchItemsAsync(new SearchRequest
+            var responseDefaultSearch = await _client.SearchItemsAsync(new SearchRequest(keyword)
             {
-                Keywords = keyword,
-                Resources = new []
+                Resources = new[]
                 {
                     "ItemInfo.Title",
                 },
             });
 
-            var responseWithSearchIndex = await this._client.SearchItemsAsync(new SearchRequest
+            var responseWithSearchIndex = await _client.SearchItemsAsync(new SearchRequest(keyword)
             {
-                Keywords = keyword,
                 SearchIndex = SearchIndex.Books,
-                Resources = new []
+                Resources = new[]
                 {
                     "ItemInfo.Title",
                 },
@@ -78,7 +74,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DataRow(null)]
         public async Task SearchItemsTest2(string keyword)
         {
-            var response = await this._client.SearchItemsAsync(keyword);
+            var response = await _client.SearchItemsAsync(keyword);
             //Assert.IsTrue(response.Successful);
             //Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -87,19 +83,18 @@ namespace Nager.AmazonProductAdvertising.UnitTest
 
         public async Task SearchItemsTest3()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest("*")
             {
-                BrowseNodeId = "84230031",
+                BrowseNodeId = "14072403031",
                 SortBy = SortBy.AvgCustomerReviews,
-                Keywords = "*",
-                Resources = new []
+                Resources = new[]
                 {
                     "Images.Primary.Small",
                     "ItemInfo.Title",
                 },
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -107,11 +102,10 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task SearchItemsTest4()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest("iPhone")
             {
                 SortBy = SortBy.AvgCustomerReviews,
-                Keywords = "iPhone",
-                Resources = new []
+                Resources = new[]
                 {
                     "Images.Primary.Small",
                     "ItemInfo.Title",
@@ -119,7 +113,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
                 Merchant = Merchant.All
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -127,16 +121,15 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task SearchItemsTest5()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest("iPhone")
             {
-                Keywords = "iPhone",
                 Resources = new[]
                 {
                     "SearchRefinements"
                 }
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -144,9 +137,8 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task SearchItemsTest6()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest(searchIndex: SearchIndex.Books)
             {
-                SearchIndex = SearchIndex.Books,
                 Resources = new[]
                 {
                     "BrowseNodeInfo.BrowseNodes",
@@ -197,7 +189,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
                 }
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
         }
@@ -205,16 +197,15 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task SearchItemsTest7()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest(searchIndex: SearchIndex.Books)
             {
-                SearchIndex = SearchIndex.Books,
                 Resources = new[]
                 {
                     "Offers.Listings.IsBuyBoxWinner",
                 }
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(10, response.SearchResult.Items.Length);
             Assert.IsTrue(response.SearchResult.Items.Any(item => item.Offers.Listings.Any(l => l.IsBuyBoxWinner)));
@@ -224,14 +215,13 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task GetBrowseNodesAsyncTest1()
         {
-            var request = new BrowseNodesRequest
+            var request = new BrowseNodesRequest(new[] { "14072403031" })
             {
-                BrowseNodeIds = new[] { "1981019031" },
                 Resources = new[] { "BrowseNodes.Ancestor", "BrowseNodes.Children" },
-                LanguagesOfPreference = new[] { "de_DE" }
+                LanguagesOfPreference = new[] { LanguageCodes.fr_FR }
             };
 
-            var response = await this._client.GetBrowseNodesAsync(request);
+            var response = await _client.GetBrowseNodesAsync(request);
             Assert.IsTrue(response.Successful);
         }
 
@@ -243,7 +233,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [DataRow("B01LFB3R0W")] //electronic, cable
         public async Task GetItemsTest(string asin)
         {
-            var response = await this._client.GetItemsAsync(asin);
+            var response = await _client.GetItemsAsync(asin);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(1, response.ItemsResult.Items.Length);
         }
@@ -251,26 +241,25 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task GetVariationsTest()
         {
-            var response = await this._client.GetVariationsAsync("B07QP2SF9J");
+            var response = await _client.GetVariationsAsync("B0C1RV9TCQ");
             Assert.IsTrue(response.Successful);
-            Assert.AreEqual(10, response.VariationsResult.Items.Length);
+            Assert.AreEqual(5, response.VariationsResult.Items.Length);
         }
 
         [TestMethod]
         public async Task GetItemsWithConditionTest()
         {
-            var request = new ItemsRequest
+            var request = new ItemsRequest(new string[] { "B0006TNGBA" })
             {
-                ItemIds = new string[] { "B000NM8SEA" },
                 Condition = Condition.Used,
-                Resources = new []
+                Resources = new[]
                 {
                     "Offers.Listings.Condition",
                     "Offers.Listings.Price"
                 }
             };
 
-            var response = await this._client.GetItemsAsync(request);
+            var response = await _client.GetItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.AreEqual(Condition.Used.ToString(), response.ItemsResult.Items[0].Offers.Listings[0].Condition.Value);
         }
@@ -278,11 +267,10 @@ namespace Nager.AmazonProductAdvertising.UnitTest
         [TestMethod]
         public async Task WebsiteSalesRankTest()
         {
-            var request = new SearchRequest
+            var request = new SearchRequest("sonic")
             {
-                Keywords = "9780060004873",
                 SearchIndex = SearchIndex.All,
-                Resources = new []
+                Resources = new[]
                 {
                     "Images.Primary.Medium",
                     "BrowseNodeInfo.BrowseNodes",
@@ -298,7 +286,7 @@ namespace Nager.AmazonProductAdvertising.UnitTest
                 }
             };
 
-            var response = await this._client.SearchItemsAsync(request);
+            var response = await _client.SearchItemsAsync(request);
             Assert.IsTrue(response.Successful);
             Assert.IsNotNull(response.SearchResult.Items[0].BrowseNodeInfo.WebsiteSalesRank);
         }

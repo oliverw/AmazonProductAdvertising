@@ -6,6 +6,6 @@ namespace Nager.AmazonProductAdvertising.Model.Paapi
     {
         public bool Successful { get; set; }
         public HttpStatusCode StatusCode { get; set; }
-        public string Content { get; set; }
+        public string? Content { get; set; }
     }
 }

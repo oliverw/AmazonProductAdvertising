@@ -1,13 +1,11 @@
-﻿using Amazon.Runtime;
+﻿using AwsSignatureVersion4.Private;
+using Nager.AmazonProductAdvertising.Auth;
 using Nager.AmazonProductAdvertising.Model;
 using Nager.AmazonProductAdvertising.Model.Paapi;
 using Nager.AmazonProductAdvertising.Model.Request;
 using Newtonsoft.Json;
-using System;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json.Serialization;
+using RestSharp;
 
 namespace Nager.AmazonProductAdvertising
 {
@@ -16,48 +14,63 @@ namespace Nager.AmazonProductAdvertising
     /// </summary>
     public class AmazonProductAdvertisingClient
     {
-        private readonly HttpClient _httpClient;
-        private readonly ImmutableCredentials _credentials;
-        private readonly string _partnerTag;
-        private readonly JsonSerializerSettings _jsonSerializerSettingsResponse;
-        private readonly JsonSerializerSettings _jsonSerializerSettingsRequest;
-        private readonly AmazonEndpointConfig _amazonEndpointConfig;
-        private readonly AmazonResourceValidator _amazonResourceValidator;
-        private readonly AmazonLanguageValidator _amazonLanguageValidator;
-        private readonly AmazonEndpoint _amazonEndpoint;
+        private readonly RestClient HttpClient;
+        private readonly string PartnerTag;
+        private readonly string AccessKey;
+        private readonly string SecretKey;
+        private readonly JsonSerializerSettings JsonSerializerSettingsResponse;
+        private readonly JsonSerializerSettings JsonSerializerSettingsRequest;
+        private readonly AmazonEndpointConfig AmazonEndpointConfig;
+        private readonly AmazonResourceValidator AmazonResourceValidator;
+        private readonly AmazonLanguageValidator AmazonLanguageValidator;
+        private readonly AmazonEndpoint AmazonEndpoint;
+        private readonly IAwsSigner AwsSigner;
+        private readonly string Path = "/paapi5/";
+        private readonly string PartnerType = "Associates";
+        private readonly string ServiceName = "ProductAdvertisingAPI";
+        private readonly string Marketplace;
 
         /// <summary>
         /// Amazon Product Advertising Client
         /// </summary>
-        /// <param name="amazonAuthentication"></param>
+        /// <param name="awsSigner"></param>
         /// <param name="amazonEndpoint"></param>
         /// <param name="partnerTag"></param>
+        /// <param name="accessKey"></param>
+        /// <param name="secretKey"></param>
         /// <param name="userAgent"></param>
         /// <param name="strictJsonMapping"></param>
-        public AmazonProductAdvertisingClient(AmazonAuthentication amazonAuthentication, AmazonEndpoint amazonEndpoint, string partnerTag, string userAgent = null, bool strictJsonMapping = false)
+        public AmazonProductAdvertisingClient(IAwsSigner awsSigner, string accessKey, string secretKey, AmazonEndpoint amazonEndpoint, string partnerTag, string? userAgent = null, bool strictJsonMapping = false)
         {
-            this._httpClient = new HttpClient(new LoggingHandler(new HttpClientHandler()));
-            this._httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent ?? "Nager.AmazonProductAdvertising");
+            AwsSigner = awsSigner;
+            AccessKey = accessKey;
+            SecretKey = secretKey;
+            HttpClient = new RestClient(new LoggingHandler(new HttpClientHandler()));
+            HttpClient.AddDefaultHeader("User-Agent", userAgent ?? "Nager.AmazonProductAdvertising");
 
-            this._credentials = new ImmutableCredentials(amazonAuthentication.AccessKey, amazonAuthentication.SecretKey, null);
-            this._amazonEndpoint = amazonEndpoint;
-            this._partnerTag = partnerTag;
+            AmazonEndpoint = amazonEndpoint;
+            PartnerTag = partnerTag;
 
-            this._jsonSerializerSettingsRequest = new JsonSerializerSettings
+            JsonSerializerSettingsRequest = new JsonSerializerSettings
             {
+                ContractResolver = new DefaultContractResolver
+                {
+                    NamingStrategy = new DefaultNamingStrategy()
+                },
                 NullValueHandling = NullValueHandling.Ignore
             };
 
-            this._jsonSerializerSettingsResponse = new JsonSerializerSettings
+            JsonSerializerSettingsResponse = new JsonSerializerSettings
             {
                 MissingMemberHandling = strictJsonMapping ? MissingMemberHandling.Error : MissingMemberHandling.Ignore
             };
 
             var amazonConfigEndpointConfigRepository = new AmazonEndpointConfigRepository();
-            this._amazonEndpointConfig = amazonConfigEndpointConfigRepository.Get(amazonEndpoint);
+            AmazonEndpointConfig = amazonConfigEndpointConfigRepository.Get(amazonEndpoint);
 
-            this._amazonResourceValidator = new AmazonResourceValidator();
-            this._amazonLanguageValidator = new AmazonLanguageValidator();
+            AmazonResourceValidator = new AmazonResourceValidator();
+            AmazonLanguageValidator = new AmazonLanguageValidator();
+            Marketplace = $"www.{AmazonEndpointConfig.Host}";
         }
 
         /// <summary>
@@ -67,9 +80,8 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<SearchItemResponse> SearchItemsAsync(string keyword)
         {
-            var request = new SearchRequest
+            var request = new SearchRequest(keyword)
             {
-                Keywords = keyword,
                 Resources = new[]
                 {
                     "BrowseNodeInfo.BrowseNodes",
@@ -121,7 +133,7 @@ namespace Nager.AmazonProductAdvertising
                 },
             };
 
-            return await this.SearchItemsAsync(request);
+            return await SearchItemsAsync(request);
         }
 
         /// <summary>
@@ -131,16 +143,18 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<SearchItemResponse> SearchItemsAsync(SearchRequest searchRequest)
         {
-            if (!this._amazonResourceValidator.IsResourcesValid(searchRequest.Resources, "SearchItems"))
+            if(!AmazonResourceValidator.IsResourcesValid(searchRequest.Resources, "SearchItems"))
             {
                 return new SearchItemResponse { Successful = false, ErrorMessage = "Resources has wrong values" };
             }
 
-            var request = new SearchItemRequest
+            var request = new SearchItemRequest(PartnerTag, PartnerType, Marketplace, keywords: searchRequest.Keywords)
             {
-                Keywords = searchRequest.Keywords,
                 Brand = searchRequest.Brand,
                 Title = searchRequest.Title,
+                Author = searchRequest.Author,
+                Actor = searchRequest.Actor,
+                Artist = searchRequest.Artist,
                 Resources = searchRequest.Resources,
                 ItemPage = searchRequest.ItemPage,
                 SortBy = searchRequest.SortBy,
@@ -148,19 +162,27 @@ namespace Nager.AmazonProductAdvertising
                 Merchant = searchRequest.Merchant,
                 SearchIndex = searchRequest.SearchIndex,
                 Condition = searchRequest.Condition,
-                PartnerTag = this._partnerTag,
-                PartnerType = "Associates",
-                Marketplace = $"www.{this._amazonEndpointConfig.Host}"
             };
 
-            var json = JsonConvert.SerializeObject(request, this._jsonSerializerSettingsRequest);
-            if (string.IsNullOrEmpty(json))
+            var json = JsonConvert.SerializeObject(request, JsonSerializerSettingsRequest);
+            if(string.IsNullOrEmpty(json))
             {
                 return new SearchItemResponse { Successful = false, ErrorMessage = "Cannot serialize object" };
             }
 
-            var response = await this.RequestAsync("SearchItems", json);
-            return this.DeserializeObject<SearchItemResponse>(response);
+            var response = await RequestAsync("SearchItems", json);
+            SearchItemResponse? test = null;
+
+            try
+            {
+                test = DeserializeObject<SearchItemResponse>(response);
+            }
+            catch(Exception ex)
+            {
+                var z = ex.Message;
+                throw;
+            }
+            return test;
         }
 
         /// <summary>
@@ -170,9 +192,8 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<GetItemsResponse> GetItemsAsync(params string[] itemIds)
         {
-            var request = new ItemsRequest
+            var request = new ItemsRequest(itemIds)
             {
-                ItemIds = itemIds,
                 Resources = new[]
                 {
                     "BrowseNodeInfo.BrowseNodes",
@@ -223,7 +244,7 @@ namespace Nager.AmazonProductAdvertising
                 }
             };
 
-            return await this.GetItemsAsync(request);
+            return await GetItemsAsync(request);
         }
 
         /// <summary>
@@ -233,30 +254,26 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<GetItemsResponse> GetItemsAsync(ItemsRequest itemsRequest)
         {
-            if (!this._amazonResourceValidator.IsResourcesValid(itemsRequest.Resources, "GetItems"))
+            if(!AmazonResourceValidator.IsResourcesValid(itemsRequest.Resources, "GetItems"))
             {
                 return new GetItemsResponse { Successful = false, ErrorMessage = "Resources has wrong values" };
             }
 
-            var request = new GetItemsRequest
+            var request = new GetItemsRequest(itemsRequest.ItemIds, PartnerTag, PartnerType, Marketplace)
             {
-                ItemIds = itemsRequest.ItemIds,
                 Resources = itemsRequest.Resources,
                 Merchant = itemsRequest.Merchant,
                 Condition = itemsRequest.Condition,
-                PartnerTag = this._partnerTag,
-                PartnerType = "Associates",
-                Marketplace = $"www.{this._amazonEndpointConfig.Host}",
             };
 
-            var json = JsonConvert.SerializeObject(request, this._jsonSerializerSettingsRequest);
-            if (string.IsNullOrEmpty(json))
+            var json = JsonConvert.SerializeObject(request, JsonSerializerSettingsRequest);
+            if(string.IsNullOrEmpty(json))
             {
                 return new GetItemsResponse { Successful = false, ErrorMessage = "Cannot serialize object" };
             }
 
-            var response = await this.RequestAsync("GetItems", json);
-            return this.DeserializeObject<GetItemsResponse>(response);
+            var response = await RequestAsync("GetItems", json);
+            return DeserializeObject<GetItemsResponse>(response);
         }
 
         /// <summary>
@@ -266,9 +283,8 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<GetVariationsResponse> GetVariationsAsync(string asin)
         {
-            var request = new VariationsRequest
+            var request = new VariationsRequest(asin)
             {
-                Asin = asin,
                 Resources = new[]
                 {
                     "ItemInfo.Title",
@@ -285,7 +301,7 @@ namespace Nager.AmazonProductAdvertising
                 }
             };
 
-            return await this.GetVariationsAsync(request);
+            return await GetVariationsAsync(request);
         }
 
         /// <summary>
@@ -295,29 +311,26 @@ namespace Nager.AmazonProductAdvertising
         /// <returns></returns>
         public async Task<GetVariationsResponse> GetVariationsAsync(VariationsRequest variationsRequest)
         {
-            var request = new GetVariationsRequest
+            var request = new GetVariationsRequest(variationsRequest.Asin, PartnerTag, PartnerType, Marketplace)
             {
-                ASIN = variationsRequest.Asin,
                 Merchant = variationsRequest.Merchant,
-                PartnerTag = this._partnerTag,
-                PartnerType = "Associates",
-                Marketplace = $"www.{this._amazonEndpointConfig.Host}",
+
                 Resources = variationsRequest.Resources
             };
 
-            if (!this._amazonResourceValidator.IsResourcesValid(request.Resources, "GetVariations"))
+            if(!AmazonResourceValidator.IsResourcesValid(request.Resources, "GetVariations"))
             {
                 return new GetVariationsResponse { Successful = false, ErrorMessage = "Resources has wrong values" };
             }
 
-            var json = JsonConvert.SerializeObject(request, this._jsonSerializerSettingsRequest);
-            if (string.IsNullOrEmpty(json))
+            var json = JsonConvert.SerializeObject(request, JsonSerializerSettingsRequest);
+            if(string.IsNullOrEmpty(json))
             {
                 return new GetVariationsResponse { Successful = false, ErrorMessage = "Cannot serialize object" };
             }
 
-            var response = await this.RequestAsync("GetVariations", json);
-            return this.DeserializeObject<GetVariationsResponse>(response);
+            var response = await RequestAsync("GetVariations", json);
+            return DeserializeObject<GetVariationsResponse>(response);
         }
 
         /// <summary>
@@ -327,9 +340,8 @@ namespace Nager.AmazonProductAdvertising
         /// <returns>GetBrowseNodesResponse</returns>
         public async Task<GetBrowseNodesResponse> GetBrowseNodesAsync(string[] browseNodeIds)
         {
-            var request = new BrowseNodesRequest
+            var request = new BrowseNodesRequest(browseNodeIds)
             {
-                BrowseNodeIds = browseNodeIds,   
                 Resources = new[]
                 {
                     "BrowseNodes.Ancestor",
@@ -337,7 +349,7 @@ namespace Nager.AmazonProductAdvertising
                 }
             };
 
-            return await this.GetBrowseNodesAsync(request);
+            return await GetBrowseNodesAsync(request);
         }
 
         /// <summary>
@@ -347,41 +359,37 @@ namespace Nager.AmazonProductAdvertising
         /// <returns>GetBrowseNodesResponse</returns>
         public async Task<GetBrowseNodesResponse> GetBrowseNodesAsync(BrowseNodesRequest browseNodesRequest)
         {
-            var request = new GetBrowseNodesRequest
+            var request = new GetBrowseNodesRequest(browseNodesRequest.BrowseNodeIds, PartnerTag, PartnerType, Marketplace)
             {
-                BrowseNodeIds = browseNodesRequest.BrowseNodeIds,
                 LanguagesOfPreference = browseNodesRequest.LanguagesOfPreference,
-                PartnerTag = this._partnerTag,
-                PartnerType = "Associates",
-                Marketplace = $"www.{this._amazonEndpointConfig.Host}",
                 Resources = browseNodesRequest.Resources
             };
 
-            if (!this._amazonResourceValidator.IsResourcesValid(request.Resources, "GetBrowseNodes"))
+            if(!AmazonResourceValidator.IsResourcesValid(request.Resources, "GetBrowseNodes"))
             {
                 return new GetBrowseNodesResponse { Successful = false, ErrorMessage = "Resources has wrong values" };
             }
 
-            if (!this._amazonLanguageValidator.IsLanguageValid(request.LanguagesOfPreference, this._amazonEndpoint))
+            if(!AmazonLanguageValidator.IsLanguageValid(request.LanguagesOfPreference, AmazonEndpoint))
             {
                 return new GetBrowseNodesResponse { Successful = false, ErrorMessage = "LanguagesOfPreference contains a language that is not available for this endpoint" };
             }
 
-            var json = JsonConvert.SerializeObject(request, this._jsonSerializerSettingsRequest);
-            if (string.IsNullOrEmpty(json))
+            var json = JsonConvert.SerializeObject(request, JsonSerializerSettingsRequest);
+            if(string.IsNullOrEmpty(json))
             {
                 return new GetBrowseNodesResponse { Successful = false, ErrorMessage = "Cannot serialize object" };
             }
 
-            var response = await this.RequestAsync("GetBrowseNodes", json);
-            return this.DeserializeObject<GetBrowseNodesResponse>(response);
+            var response = await RequestAsync("GetBrowseNodes", json);
+            return DeserializeObject<GetBrowseNodesResponse>(response);
         }
 
         private T DeserializeObject<T>(HttpResponse response) where T : AmazonResponse
         {
-            var amazonResponse = JsonConvert.DeserializeObject<T>(response.Content, this._jsonSerializerSettingsResponse);
+            var amazonResponse = JsonConvert.DeserializeObject<T>(response.Content, JsonSerializerSettingsResponse);
             amazonResponse.Successful = response.Successful;
-            if (amazonResponse.Errors != null)
+            if(amazonResponse.Errors != null)
             {
                 amazonResponse.Successful = false;
                 amazonResponse.ErrorMessage = string.Join(Environment.NewLine, amazonResponse.Errors.Select(o => o.Message));
@@ -392,27 +400,33 @@ namespace Nager.AmazonProductAdvertising
 
         private async Task<HttpResponse> RequestAsync(string type, string json)
         {
-            var serviceName = "ProductAdvertisingAPI";
-
+            var host = $"webservices.{AmazonEndpointConfig.Host}";
+            var date = DateTime.UtcNow;
             var amzTarget = $"com.amazon.paapi5.v1.ProductAdvertisingAPIv1.{type}";
-            var requestUri = $"https://webservices.{this._amazonEndpointConfig.Host}/paapi5/{type.ToLower()}";
 
-            var request = new HttpRequestMessage
+            var headerToSign = new Dictionary<string, string>
             {
-                Method = HttpMethod.Post,
-                RequestUri = new Uri(requestUri),
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                { "Content-Encoding", "amz-1.0" },
+                { "Host", host },
+                { "X-Amz-Target", amzTarget },
+                { "X-Amz-Date", date.ToAmzDateStr() },
             };
+            var authorization = AwsSigner.CreateAuthorizationHeader(date, AccessKey, SecretKey, headerToSign, "POST", $"{Path}{type.ToLower()}", json, AmazonEndpointConfig.Region, ServiceName);
 
-            request.Content.Headers.ContentEncoding.Add("amz-1.0");
-            request.Headers.Add("x-amz-target", amzTarget);
+            var requestUri = $"https://webservices.{AmazonEndpointConfig.Host}{Path}{type.ToLower()}";
 
-            using (var responseMessage = await this._httpClient.SendAsync(request, this._amazonEndpointConfig.Region, serviceName, this._credentials))
-            {
-                var content = await responseMessage.Content.ReadAsStringAsync();
-                //System.IO.File.WriteAllText($"{DateTime.Now:hhmmssfff}.json", content);
-                return new HttpResponse { Successful = responseMessage.IsSuccessStatusCode, StatusCode = responseMessage.StatusCode, Content = content };
-            }
+            var request = new RestRequest(new Uri(requestUri), Method.Post);
+            request.AddJsonBody(json);
+            request.AddHeader("Authorization", authorization);
+            request.AddHeader("Content-Encoding", "amz-1.0");
+            request.AddHeader("Host", host);
+            request.AddHeader("Content-Type", "application/json");
+            request.AddHeader("x-Amz-Target", amzTarget);
+            request.AddHeader("x-Amz-Date", date.ToAmzDateStr());
+
+            var responseMessage = await HttpClient.ExecuteAsync(request);
+            //System.IO.File.WriteAllText($"{DateTime.Now:hhmmssfff}.json", content);
+            return new HttpResponse { Successful = responseMessage.IsSuccessStatusCode, StatusCode = responseMessage.StatusCode, Content = responseMessage.Content ?? "" };
         }
     }
 }

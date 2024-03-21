@@ -8,11 +8,11 @@
         /// <summary>
         /// Host
         /// </summary>
-        public string Host { get; set; }
+        public string Host { get; set; } = "";
 
         /// <summary>
         /// Region
         /// </summary>
-        public string Region { get; set; }
+        public string Region { get; set; } = "";
     }
 }

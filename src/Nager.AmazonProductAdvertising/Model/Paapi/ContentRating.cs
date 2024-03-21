@@ -2,6 +2,6 @@
 {
     public class ContentRating
     {
-        public DisplayValueItem<string> AudienceRating { get; set; }
+        public DisplayValueItem<string>? AudienceRating { get; set; }
     }
 }

@@ -2,7 +2,7 @@
 {
     public class Condition
     {
-        public string Value { get; set; }
-        public Condition2 SubCondition { get; set; }
+        public string? Value { get; set; }
+        public Condition2? SubCondition { get; set; }
     }
 }
