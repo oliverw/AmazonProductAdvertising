@@ -10,15 +10,15 @@ Please check the AmazonEndpoint is correct for your Country.
 
 ##### Item Search (simple)
 ```cs
-var authentication = new AmazonAuthentication("accesskey", "secretkey");
-var client = new AmazonProductAdvertisingClient(authentication, AmazonEndpoint.US, "nager-20");
+var signer = new AwsSigner();
+var client = new AmazonProductAdvertisingClient(signer,"accesskey", "secretkey",AmazonEndpoint.US, "yourPartnerTag");
 var result = await client.SearchItemsAsync("canon eos");
 ```
 
 ##### Item Search (advanced)
 ```cs
-var authentication = new AmazonAuthentication("accesskey", "secretkey");
-var client = new AmazonProductAdvertisingClient(authentication, AmazonEndpoint.US, "nager-20");
+var signer = new AwsSigner();
+var client = new AmazonProductAdvertisingClient(signer,"accesskey", "secretkey",AmazonEndpoint.US, "yourPartnerTag");
 var searchRequest = new SearchRequest
 {
     Keywords = "canon eos",
@@ -37,15 +37,15 @@ var result = await client.SearchItemsAsync(searchRequest);
 
 ##### Item Lookup
 ```cs
-var authentication = new AmazonAuthentication("accesskey", "secretkey");
-var client = new AmazonProductAdvertisingClient(authentication, AmazonEndpoint.US, "nager-20");
+var signer = new AwsSigner();
+var client = new AmazonProductAdvertisingClient(signer,"accesskey", "secretkey",AmazonEndpoint.US, "yourPartnerTag");
 var result = await client.GetItemsAsync("B00BYPW00I");
 ```
 
 ##### Multi Item Lookup
 ```cs
-var authentication = new AmazonAuthentication("accesskey", "secretkey");
-var client = new AmazonProductAdvertisingClient(authentication, AmazonEndpoint.US, "nager-20");
+var signer = new AwsSigner();
+var client = new AmazonProductAdvertisingClient(signer,"accesskey", "secretkey",AmazonEndpoint.US, "yourPartnerTag");
 var result = await client.GetItemsAsync(new string[] { "B00BYPW00I", "B004MKNBJG" });
 ```
 
