@@ -1,5 +1,4 @@
-﻿using AwsSignatureVersion4.Private;
-using Nager.AmazonProductAdvertising.Auth;
+﻿using Nager.AmazonProductAdvertising.Auth;
 using Nager.AmazonProductAdvertising.Model;
 using Nager.AmazonProductAdvertising.Model.Paapi;
 using Nager.AmazonProductAdvertising.Model.Request;
